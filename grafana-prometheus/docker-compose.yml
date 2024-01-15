@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  nginx:
+    container_name: nginx
+    image: dmitiriy/artem_forever_nginx:latest
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - app
+
+  apache:
+    container_name: apache
+    image: dmitiriy/artem_forever_apache:latest
+    labels:
+      logging: "promtail"
+      logging_jobname: "containerlogs"
+    ports:
+      - 8000:8000
+    networks:
+      - app
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - app
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    networks:
+      - app
+    ports:
+      - 9100:9100
+
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+#     - ./grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/main.yml
+#     - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    networks:
+      - app
+
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - 3100:3100
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - app
+
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail.yml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/docker-config.yaml
+    depends_on:
+      - loki
+    networks:
+      - app
+
+networks:
+  app:
+    driver: bridge
+    name: app
+volumes:
+  prometheus-data:
+
+  grafana-data:

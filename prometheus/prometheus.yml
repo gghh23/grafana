@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 5s
+  evaluation_interval: 5s
+alerting:
+  alertmanagers:
+    - scheme: http
+      static_configs:
+        - targets:
+            - 'alertmanager:9093'
+rule_files:
+  - "/etc/prometheus/rules.yml"
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - "prometheus:9090"
+  - job_name: cpu
+    ec2_sd_configs:
+     - region: us-east-1
+       port: 9100
+    relabel_configs:
+     - source_labels: ['__meta_ec2_tag_work']
+       regex: cpu
+       action: keep
+     - source_labels: ['__meta_ec2_tag_Name']
+       target_label: Name
+  - job_name: vm
+    ec2_sd_configs:
+     - region: us-east-1
+       port: 9100
+    relabel_configs:
+     - source_labels: ['__meta_ec2_tag_work']
+       regex: vm
+       action: keep
+     - source_labels: ['__meta_ec2_tag_Name']
+       target_label: Name
+
